@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
+import json
 import requests
+import xml.etree.ElementTree as ET
 
 
 # -- Skill Behaviours --
@@ -20,20 +22,22 @@ def get_welcome_response():
 def fetch_bus_arrival_predictions(intent, session):
 
     session_attributes = {}
-    route = intent['slots']['route']['value']
-    stop = intent['slots']['stop']['value']
+    r = intent['slots']['route']['value'].lower()
+    s = intent['slots']['stop']['value'].lower()
 
     nextBusUrl = "http://webservices.nextbus.com/service/publicXMLFeed?a=rutgers"
 
-    if route == 'weekend 1':
-        route = 'wknd1'
-    if stop == 'Livingston plaza':
-        stop = 'beck'
+    routes = json.load(open('route_names.json', 'r'))
+    stops = json.load(open('stop_names.json', 'r'))
+    route_to_stops = json.load(open('route_to_stops.json', 'r'))
+
+    r = routes[r]
+    s = stops[s]
 
     prediction_payload = {
         'command': 'predictions',
-        'r': route,
-        's': stop
+        'r': r,
+        's': s
     }
 
     response = requests.get(nextBusUrl, prediction_payload)
