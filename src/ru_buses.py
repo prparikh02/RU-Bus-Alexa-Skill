@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import json
+import yaml
 import requests
 import xml.etree.ElementTree as ET
 
@@ -27,24 +27,42 @@ def fetch_bus_arrival_predictions(intent, session):
 
     nextBusUrl = "http://webservices.nextbus.com/service/publicXMLFeed?a=rutgers"
 
-    routes = json.load(open('route_names.json', 'r'))
-    stops = json.load(open('stop_names.json', 'r'))
-    route_to_stops = json.load(open('route_to_stops.json', 'r'))
+    routes = yaml.safe_load(open('route_names.json', 'r'))
+    stops = yaml.safe_load(open('stop_names.json', 'r'))
+    route_paths = yaml.safe_load(open('route_paths.json', 'r'))
 
-    r = routes[r]
-    s = stops[s]
+    r_enc = routes[r]
+    s_enc = stops[s]
 
+    r_stops = route_paths[r_enc]
+    target_stop = set(s_enc).intersection(set(r_stops))
+
+    if len(target_stop) == 0:
+        print 'we gon do something later'
+        # invalid_query_response()
+    elif len(target_stop) == 2:
+        print 'we gon do something else later'
+        # resolve_proper_stop()
+
+    (target_stop,) = target_stop
     prediction_payload = {
         'command': 'predictions',
-        'r': r,
-        's': s
+        'r': r_enc,
+        's': target_stop
     }
 
-    response = requests.get(nextBusUrl, prediction_payload)
-    root = ET.fromstring(response.content)
-    arrival_in_mins = int(root.iter('prediction').next().get('minutes'))
+    # the following can be shipped off to anoother Function
+    #   and used for cases when target_stop is both 1 and 2
+    nextbus_response = requests.get(nextBusUrl, prediction_payload)
+    root = ET.fromstring(nextbus_response.content)
+    try:
+        arrival_in_mins = int(root.iter('prediction').next().get('minutes'))
+    except StopIteration:
+        print 'route not running'
+        # route_not_running_response()
 
-    speech_output = "The %s arrives at %s in %d minutes" % (route, stop,  arrival_in_mins)
+
+    speech_output = "The %s arrives at %s in %d minutes" % (r, s,  arrival_in_mins)
 
     return build_response(session_attributes, build_speechlet_response(intent['name'], speech_output, None, False))
 
